@@ -722,7 +722,9 @@ def load_constant_altitude(
     )
     download_resource(session, resource, destination)
     try:
-        step = parse_grib_files([destination], grid, map_sampler, lead_hour=0)
+        step = parse_grib_files(
+            [destination], grid, map_sampler, lead_hour=0, lenient=True
+        )
     finally:
         destination.unlink(missing_ok=True)
     return step["values"].get("altitude_m"), step["map_values"].get("altitude_m")
@@ -1088,7 +1090,17 @@ def parse_grib_files(
     grid: NationalGrid,
     map_sampler: MapSampler,
     lead_hour: int,
+    lenient: bool = False,
 ) -> dict[str, Any]:
+    """Décode un ensemble de fichiers GRIB2 partageant la même grille.
+
+    `lenient` désactive les contrôles de cohérence propres à une échéance de
+    prévision complète (température à 2 m présente, date de validité
+    connue). C'est le mode utilisé pour lire le fichier de champs constants
+    (relief statique, sans horodatage de run ni la plupart des paramètres de
+    prévision) lors du repli d'altitude — voir `load_constant_altitude`.
+    """
+
     point_values: dict[str, np.ndarray] = {}
     map_values: dict[str, np.ndarray] = {}
     run_time: datetime | None = None
@@ -1117,16 +1129,17 @@ def parse_grib_files(
                 finally:
                     codes_release(gid)
 
-    if "temperature_k" not in point_values:
-        raise RuntimeError(f"Température à 2 m absente de l'échéance +{lead_hour:02d} h")
-    if observed_lead is not None and observed_lead != lead_hour:
-        raise RuntimeError(
-            f"Échéance GRIB incohérente : +{observed_lead} h au lieu de +{lead_hour} h"
-        )
-    if valid_time is None and run_time is not None:
-        valid_time = run_time + timedelta(hours=lead_hour)
-    if valid_time is None:
-        raise RuntimeError(f"Date de validité absente à +{lead_hour:02d} h")
+    if not lenient:
+        if "temperature_k" not in point_values:
+            raise RuntimeError(f"Température à 2 m absente de l'échéance +{lead_hour:02d} h")
+        if observed_lead is not None and observed_lead != lead_hour:
+            raise RuntimeError(
+                f"Échéance GRIB incohérente : +{observed_lead} h au lieu de +{lead_hour} h"
+            )
+        if valid_time is None and run_time is not None:
+            valid_time = run_time + timedelta(hours=lead_hour)
+        if valid_time is None:
+            raise RuntimeError(f"Date de validité absente à +{lead_hour:02d} h")
     return {
         "lead_hour": lead_hour,
         "run_time": run_time,
