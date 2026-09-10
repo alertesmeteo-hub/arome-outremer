@@ -730,6 +730,65 @@ def load_constant_altitude(
     return step["values"].get("altitude_m"), step["map_values"].get("altitude_m")
 
 
+def resolve_domain_altitude(
+    session: requests.Session,
+    domain: Domain,
+    resources: dict[tuple[str, int], Resource],
+    geometry: GridGeometry,
+    catalog: NationalCatalog,
+    downloads: Path,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Détermine l'altitude du domaine une seule fois, avant la boucle
+    principale par échéance.
+
+    L'altitude ne varie pas selon l'échéance : il est donc à la fois plus
+    sûr et plus correct de la découvrir une seule fois en amont — avec un
+    `NationalGrid`/`MapSampler` dédiés et jetables, jamais partagés avec le
+    parse principal de chaque échéance — plutôt qu'en cours de boucle. Un
+    précédent repli en cours de boucle réutilisait le `grid`/`map_sampler`
+    de l'échéance en cours pour relire un second fichier GRIB2, ce qui
+    provoquait une régression (`Température à 2 m absente`) sur toutes les
+    échéances suivantes.
+    """
+
+    probe_grid = NationalGrid(catalog, geometry)
+    map_width, map_height = compute_canvas_size(domain.bounds)
+    probe_sampler = MapSampler(map_width, map_height, domain.bounds, geometry)
+
+    point_altitude: np.ndarray | None = None
+    map_altitude: np.ndarray | None = None
+    sp3_resource = resources.get(("SP3", 0))
+    if sp3_resource is not None:
+        probe_path = downloads / "altitude-probe-sp3.grib2"
+        LOGGER.info("Sondage altitude : lecture de %s", sp3_resource.title)
+        download_resource(session, sp3_resource, probe_path)
+        try:
+            step = parse_grib_files(
+                [probe_path], probe_grid, probe_sampler, lead_hour=0, lenient=True
+            )
+        finally:
+            probe_path.unlink(missing_ok=True)
+        point_altitude = step["values"].get("altitude_m")
+        map_altitude = step["map_values"].get("altitude_m")
+
+    if point_altitude is None or map_altitude is None:
+        LOGGER.warning(
+            "Altitude absente du fichier SP3 +00 h pour %s : repli sur le "
+            "fichier de champs constants",
+            domain.id,
+        )
+        point_altitude, map_altitude = load_constant_altitude(
+            session, domain, probe_grid, probe_sampler, downloads
+        )
+
+    if point_altitude is None or map_altitude is None:
+        raise RuntimeError(
+            "Altitude absente du fichier SP3 +00 h et introuvable dans le "
+            f"fichier de champs constants pour {domain.id}"
+        )
+    return point_altitude, map_altitude
+
+
 def local_resources(
     directory: Path, pattern: re.Pattern[str], fallback_pattern: re.Pattern[str]
 ) -> list[Resource]:
@@ -1605,8 +1664,15 @@ def build_product(
         pregridded=True,
     )
 
-    point_altitude: np.ndarray | None = None
-    map_altitude: np.ndarray | None = None
+    point_altitude, map_altitude = resolve_domain_altitude(
+        session, domain, resources, geometry, catalog, downloads
+    )
+    for department in catalog.departments.values():
+        for position, global_id in enumerate(department.global_point_ids):
+            department.points[position].append(
+                json_number(point_altitude[int(global_id)], integer=True)
+            )
+
     point_state: dict[str, np.ndarray] = {}
     map_state: dict[str, np.ndarray] = {}
     model_run = run_hint
@@ -1640,29 +1706,6 @@ def build_product(
                 )
                 step = parse_grib_files(current_paths, grid, map_sampler, lead)
                 model_run = model_run or step["run_time"]
-                if lead == 0:
-                    point_altitude = step["values"].get("altitude_m")
-                    map_altitude = step["map_values"].get("altitude_m")
-                    if point_altitude is None or map_altitude is None:
-                        LOGGER.warning(
-                            "Altitude absente du fichier SP3 +00 h pour %s : "
-                            "repli sur le fichier de champs constants",
-                            domain.id,
-                        )
-                        point_altitude, map_altitude = load_constant_altitude(
-                            session, domain, grid, map_sampler, downloads
-                        )
-                    if point_altitude is None or map_altitude is None:
-                        raise RuntimeError(
-                            "Altitude absente du fichier SP3 +00 h et introuvable "
-                            f"dans le fichier de champs constants pour {domain.id}"
-                        )
-                    for department in catalog.departments.values():
-                        for position, global_id in enumerate(department.global_point_ids):
-                            department.points[position].append(
-                                json_number(point_altitude[int(global_id)], integer=True)
-                            )
-                assert point_altitude is not None and map_altitude is not None
                 transformed, point_state = transform_step(
                     step["values"], point_altitude, point_state, lead
                 )
