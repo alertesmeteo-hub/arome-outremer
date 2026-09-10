@@ -178,6 +178,7 @@ class Domain:
     catalog_file: str
     admin_grouping: str
     admin_codes: tuple[str, ...]
+    constant_resource_title: str | None = None
 
 
 @dataclass(frozen=True)
@@ -335,6 +336,11 @@ def load_domains(path: Path) -> dict[str, Domain]:
                 catalog_file=str(entry.get("catalog_file", "")),
                 admin_grouping=str(entry.get("admin_grouping", "single_zone")),
                 admin_codes=tuple(str(code) for code in entry.get("admin_codes") or []),
+                constant_resource_title=(
+                    str(entry["constant_resource_title"])
+                    if entry.get("constant_resource_title")
+                    else None
+                ),
             )
         except KeyError as exc:
             raise RuntimeError(
@@ -640,6 +646,86 @@ def api_resources(
             f"{domain.id} ({domain.dataset_slug})"
         )
     return resources
+
+
+def find_constant_resource(session: requests.Session, domain: Domain) -> Resource | None:
+    """Cherche la ressource « Champs CONSTANT » (relief statique) du domaine.
+
+    Contrairement aux paquets SP1/SP2/SP3/…, ce fichier ne suit pas le
+    format `{prefix}__0025__{group}__{lead}H__{run}.grib2` : son titre est
+    fixe (p. ex. « Champs CONSTANT GUYANE0025 ») et il ne porte ni run ni
+    échéance. On le retrouve donc par titre plutôt que par le RESOURCE_RE
+    utilisé pour les paquets horaires.
+    """
+
+    response = session.get(
+        dataset_api_url(domain),
+        params={"_": int(time.time())},
+        headers={"Cache-Control": "no-cache"},
+        timeout=(15, 90),
+    )
+    response.raise_for_status()
+    payload = response.json()
+    expected_title = domain.constant_resource_title
+    fallback = re.compile(r"^Champs\s+CONSTANT\b", re.IGNORECASE)
+    best: Resource | None = None
+    for item in payload.get("resources") or []:
+        title = str(item.get("title") or "")
+        if expected_title is not None:
+            matches = title.strip() == expected_title.strip()
+        else:
+            matches = bool(fallback.match(title.strip()))
+        if not matches:
+            continue
+        best = Resource(
+            group="CONSTANT",
+            lead=0,
+            run_text=None,
+            title=title,
+            url=str(item.get("url") or ""),
+            size=int(item.get("filesize") or 0) or None,
+        )
+        break
+    return best
+
+
+def load_constant_altitude(
+    session: requests.Session,
+    domain: Domain,
+    grid: NationalGrid,
+    map_sampler: MapSampler,
+    downloads: Path,
+) -> tuple[np.ndarray | None, np.ndarray | None]:
+    """Repli d'altitude via le fichier « champs constants » du domaine.
+
+    Certains domaines Outre-Mer (Antilles, Guyane, Nouvelle-Calédonie,
+    Polynésie) ne publient pas le message GRIB `h` dans leur paquet SP3
+    +00 h, contrairement à la Réunion-Mayotte et à AROME France. Le champ
+    d'altitude (même shortName eccodes `h`, confirmé par inspection directe
+    des cinq fichiers constants) est en revanche toujours présent dans le
+    fichier de champs constants du domaine, publié séparément et sans
+    dépendance à un run particulier.
+    """
+
+    resource = find_constant_resource(session, domain)
+    if resource is None or not resource.url:
+        LOGGER.warning(
+            "Aucun fichier de champs constants trouvé pour %s (titre attendu : %s)",
+            domain.id,
+            domain.constant_resource_title or "Champs CONSTANT …",
+        )
+        return None, None
+    destination = downloads / "constant-fields.grib2"
+    LOGGER.info(
+        "Repli altitude : téléchargement du fichier de champs constants %s",
+        resource.title,
+    )
+    download_resource(session, resource, destination)
+    try:
+        step = parse_grib_files([destination], grid, map_sampler, lead_hour=0)
+    finally:
+        destination.unlink(missing_ok=True)
+    return step["values"].get("altitude_m"), step["map_values"].get("altitude_m")
 
 
 def local_resources(
@@ -1545,7 +1631,19 @@ def build_product(
                     point_altitude = step["values"].get("altitude_m")
                     map_altitude = step["map_values"].get("altitude_m")
                     if point_altitude is None or map_altitude is None:
-                        raise RuntimeError("Altitude absente du fichier SP3 +00 h")
+                        LOGGER.warning(
+                            "Altitude absente du fichier SP3 +00 h pour %s : "
+                            "repli sur le fichier de champs constants",
+                            domain.id,
+                        )
+                        point_altitude, map_altitude = load_constant_altitude(
+                            session, domain, grid, map_sampler, downloads
+                        )
+                    if point_altitude is None or map_altitude is None:
+                        raise RuntimeError(
+                            "Altitude absente du fichier SP3 +00 h et introuvable "
+                            f"dans le fichier de champs constants pour {domain.id}"
+                        )
                     for department in catalog.departments.values():
                         for position, global_id in enumerate(department.global_point_ids):
                             department.points[position].append(

@@ -11,7 +11,8 @@
       "bounds": {"south": 9.7, "west": -75.3, "north": 22.9, "east": -51.7},
       "catalog_file": "config/communes-antilles.json",
       "admin_grouping": "department",
-      "admin_codes": ["971", "972", "977", "978"]
+      "admin_codes": ["971", "972", "977", "978"],
+      "constant_resource_title": "Champs CONSTANT CARAIB0025"
     },
     {
       "id": "guyane",
@@ -24,7 +25,8 @@
       "bounds": {"south": 1.5, "west": -55.2, "north": 6.5, "east": -50.8},
       "catalog_file": "config/communes-guyane.json",
       "admin_grouping": "single_zone",
-      "admin_codes": ["973"]
+      "admin_codes": ["973"],
+      "constant_resource_title": "Champs CONSTANT GUYANE0025"
     },
     {
       "id": "reunion",
@@ -37,7 +39,8 @@
       "bounds": {"south": -25.9, "west": 32.75, "north": -7.25, "east": 67.6},
       "catalog_file": "config/communes-reunion.json",
       "admin_grouping": "single_zone",
-      "admin_codes": ["974", "976"]
+      "admin_codes": ["974", "976"],
+      "constant_resource_title": "Champs CONSTANT INDIEN0025"
     },
     {
       "id": "ncaledonie",
@@ -50,7 +53,8 @@
       "bounds": {"south": -30, "west": 156, "north": -10, "east": 174},
       "catalog_file": "config/communes-ncaledonie.json",
       "admin_grouping": "single_zone",
-      "admin_codes": ["988"]
+      "admin_codes": ["988"],
+      "constant_resource_title": "Champs CONSTANT NCALED0025"
     },
     {
       "id": "polynesie",
@@ -63,7 +67,8 @@
       "bounds": {"south": -25.25, "west": -157.5, "north": -12.6, "east": -144.5},
       "catalog_file": "config/communes-polynesie.json",
       "admin_grouping": "single_zone",
-      "admin_codes": ["987"]
+      "admin_codes": ["987"],
+      "constant_resource_title": "Champs CONSTANT POLYN0025"
     }
   ]
 }
