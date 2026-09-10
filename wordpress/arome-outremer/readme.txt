@@ -3,7 +3,7 @@ Contributors: alertesmeteohub
 Tags: meteo, weather, arome, outre-mer, antilles, guyane, reunion, mayotte, nouvelle-caledonie, polynesie
 Requires at least: 5.8
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -25,9 +25,9 @@ prévisions et la carte interactive se resynchronisent automatiquement sur les d
 
 Fonctionnalités :
 
-* Recherche de commune (ou géolocalisation) dans le territoire actif, à partir du catalogue de lieux publié
-  par le pipeline — donc disponible uniformément sur les 5 territoires, y compris la Nouvelle-Calédonie et la
-  Polynésie française, non couvertes par l'API géographique officielle française.
+* Recherche de commune dans le territoire actif, à partir du catalogue de lieux publié par le pipeline — donc
+  disponible uniformément sur les 5 territoires, y compris la Nouvelle-Calédonie et la Polynésie française,
+  non couvertes par l'API géographique officielle française.
 * Cartes météo interactives (rendu WebGL) : température, ressenti, précipitations, vent, rafales, pression,
   nébulosité, humidité, indices orageux (MUCAPE, réflectivité), altitude.
 * Onglets « Cartes météo », « Prévisions générales », « Prévisions orages » et « Risque de neige ».
@@ -65,6 +65,9 @@ Attributs disponibles :
 * `selecteur` — `oui` (défaut) ou `non` pour masquer la recherche de commune.
 
 == Changelog ==
+
+= 1.0.1 =
+Suppression du bouton de géolocalisation « Détecter ma ville » (recherche manuelle de commune uniquement).
 
 = 1.0.0 =
 Version initiale : couverture des 5 territoires d'Outre-Mer (Antilles, Guyane, Réunion-Mayotte,

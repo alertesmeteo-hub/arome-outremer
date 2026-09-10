@@ -3,7 +3,7 @@
  * Plugin Name: AROME Outre-Mer Météo-France — Tableaux et cartes
  * Plugin URI: https://github.com/alertesmeteo-hub/arome-outremer
  * Description: Module unique de cartes interactives et de prévisions AROME de Météo-France pour les 5 territoires d'Outre-Mer : Antilles, Guyane, Réunion-Mayotte, Nouvelle-Calédonie et Polynésie française.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Alertes Météo Hub
  * Requires at least: 5.8
  * Requires PHP: 7.4
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AOM_VERSION', '1.0.0');
+define('AOM_VERSION', '1.0.1');
 define('AOM_RELEASE_DATE', '10/09/2026');
 define('AOM_OPTION_BASE_URL', 'aom_outremer_data_base_url');
 define(
@@ -198,7 +198,7 @@ function aom_render_settings_page() {
         <p><code>[arome_outremer]</code> : cartes interactives et prévisions AROME pour les 5 territoires d'Outre-Mer, avec sélecteur de territoire.</p>
         <p><code>[arome_outremer territoire="reunion" heures="42"]</code></p>
         <p><code>[arome_outremer territoire="polynesie" selecteur="non"]</code> : une seule ville, sans recherche de commune.</p>
-        <p>Le visiteur peut ensuite changer de territoire, rechercher n’importe quelle commune du territoire actif ou se géolocaliser.</p>
+        <p>Le visiteur peut ensuite changer de territoire ou rechercher n’importe quelle commune du territoire actif.</p>
     </div>
     <?php
 }
@@ -559,7 +559,6 @@ function aom_render_shortcode($atts) {
                         aria-describedby="<?php echo esc_attr($status_id); ?>"
                     >
                 </div>
-                <button type="button" class="aom-locate-button" data-aom-locate>📍 Détecter ma ville</button>
                 <div
                     id="<?php echo esc_attr($results_id); ?>"
                     class="aom-search-results"

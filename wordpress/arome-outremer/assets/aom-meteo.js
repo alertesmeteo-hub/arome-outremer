@@ -70,16 +70,6 @@
         return typeof value === 'number' && Number.isFinite(value);
     }
 
-    function haversineKm(lat1, lon1, lat2, lon2) {
-        var toRad = Math.PI / 180;
-        var dLat = (lat2 - lat1) * toRad;
-        var dLon = (lon2 - lon1) * toRad;
-        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        return 2 * 6371 * Math.asin(Math.sqrt(a));
-    }
-
     function normalizeSearchText(value) {
         var text = String(value || '').toLowerCase();
         if (typeof text.normalize === 'function') {
@@ -879,7 +869,6 @@
 
         var territorySelects = Array.prototype.slice.call(app.querySelectorAll('[data-aom-territory-select]'));
         var input = app.querySelector('.aom-city-input');
-        var locateButton = app.querySelector('[data-aom-locate]');
         var results = app.querySelector('.aom-search-results');
         var status = app.querySelector('.aom-search-status');
         var generalBody = app.querySelector('[data-aom-body-general]');
@@ -1685,63 +1674,6 @@
             displaySearchResults(candidates.slice(0, 12));
         }
 
-        function detectCurrentCommune() {
-            if (!locateButton) { return; }
-            if (!navigator.geolocation) {
-                setStatus('La géolocalisation n’est pas disponible dans ce navigateur.', true);
-                return;
-            }
-            if (!placesData || !placesData.length) {
-                setStatus('Catalogue des communes indisponible pour l’instant.', true);
-                return;
-            }
-            locateButton.disabled = true;
-            locateButton.classList.add('is-loading');
-            locateButton.textContent = '📍 Localisation…';
-            setStatus('Recherche de votre position…', false);
-
-            navigator.geolocation.getCurrentPosition(function (position) {
-                var lat = position.coords.latitude;
-                var lon = position.coords.longitude;
-                var nearest = null;
-                var nearestDistance = Infinity;
-                placesData.forEach(function (candidate) {
-                    if (!finite(candidate.lat) || !finite(candidate.lon)) { return; }
-                    var distance = haversineKm(lat, lon, candidate.lat, candidate.lon);
-                    if (distance < nearestDistance) {
-                        nearestDistance = distance;
-                        nearest = candidate;
-                    }
-                });
-                if (!nearest) {
-                    setStatus('Votre position ne correspond à aucune commune couverte.', true);
-                } else {
-                    selectCommune(nearest);
-                    setStatus('Ville détectée : ' + nearest.nom + ' (à ' +
-                        formatNumber(nearestDistance, 0) + ' km).', false);
-                }
-                locateButton.disabled = false;
-                locateButton.classList.remove('is-loading');
-                locateButton.textContent = '📍 Détecter ma ville';
-            }, function (error) {
-                var message = 'Localisation refusée ou indisponible.';
-                if (error && error.code === 1) { message = 'Autorisation de localisation refusée.'; }
-                else if (error && error.code === 2) { message = 'Position actuellement indisponible.'; }
-                else if (error && error.code === 3) { message = 'La localisation a pris trop de temps.'; }
-                setStatus(message, true);
-                locateButton.disabled = false;
-                locateButton.classList.remove('is-loading');
-                locateButton.textContent = '📍 Détecter ma ville';
-            }, {
-                enableHighAccuracy: false,
-                timeout: 12000,
-                maximumAge: 300000
-            });
-        }
-
-        if (locateButton) {
-            locateButton.addEventListener('click', detectCurrentCommune);
-        }
 
         input.addEventListener('input', function () {
             window.clearTimeout(debounceTimer);

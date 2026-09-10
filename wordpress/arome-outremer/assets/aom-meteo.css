@@ -1654,35 +1654,6 @@
     transform: translateY(-100%);
 }
 
-.aom-card .aom-locate-button {
-    display: inline-flex;
-    min-height: 36px;
-    margin: 8px 0 0;
-    padding: 7px 12px;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #8dbdd1;
-    border-radius: 9px;
-    background: #fff;
-    box-shadow: 0 2px 6px rgba(7, 59, 99, .06);
-    color: #0b628f;
-    font: 850 .78rem/1.15 Inter, "Segoe UI", Arial, sans-serif;
-    cursor: pointer;
-}
-
-.aom-card .aom-locate-button:hover,
-.aom-card .aom-locate-button:focus-visible {
-    outline: none;
-    border-color: #277fa8;
-    background: #eaf7fc;
-}
-
-.aom-card .aom-locate-button:disabled,
-.aom-card .aom-locate-button.is-loading {
-    opacity: .65;
-    cursor: wait;
-}
-
 /* Le bouton ajoute de la hauteur sous le champ : la liste de résultats descend. */
 .aom-search-results {
     top: 116px;
@@ -1718,9 +1689,6 @@
         font-size: 11px;
     }
 
-    .aom-card .aom-locate-button {
-        width: 100%;
-    }
 }
 
 
