@@ -1,0 +1,69 @@
+{
+  "domains": [
+    {
+      "id": "antilles",
+      "label": "Antilles",
+      "meteofrance_code": "ANTIL",
+      "dataset_slug": "paquets-arome-outre-mer-antilles-resolution-0-025deg",
+      "resource_prefix": "arome-om-ANTIL",
+      "forecast_hours_max": 48,
+      "run_hours_utc": [0, 6, 12, 18],
+      "bounds": {"south": 9.7, "west": -75.3, "north": 22.9, "east": -51.7},
+      "catalog_file": "config/communes-antilles.json",
+      "admin_grouping": "department",
+      "admin_codes": ["971", "972", "977", "978"]
+    },
+    {
+      "id": "guyane",
+      "label": "Guyane",
+      "meteofrance_code": "GUYANE",
+      "dataset_slug": "paquets-arome-outre-mer-guyane-resolution-0-025deg-1",
+      "resource_prefix": "arome-om-GUYANE",
+      "forecast_hours_max": 48,
+      "run_hours_utc": [0, 6, 12, 18],
+      "bounds": {"south": 1.5, "west": -55.2, "north": 6.5, "east": -50.8},
+      "catalog_file": "config/communes-guyane.json",
+      "admin_grouping": "single_zone",
+      "admin_codes": ["973"]
+    },
+    {
+      "id": "reunion",
+      "label": "Réunion-Mayotte",
+      "meteofrance_code": "INDIEN",
+      "dataset_slug": "paquets-arome-outre-mer-reunion-mayotte-resolution-0-025deg",
+      "resource_prefix": "arome-om-INDIEN",
+      "forecast_hours_max": 48,
+      "run_hours_utc": [0, 6, 12, 18],
+      "bounds": {"south": -25.9, "west": 32.75, "north": -7.25, "east": 67.6},
+      "catalog_file": "config/communes-reunion.json",
+      "admin_grouping": "single_zone",
+      "admin_codes": ["974", "976"]
+    },
+    {
+      "id": "ncaledonie",
+      "label": "Nouvelle-Calédonie",
+      "meteofrance_code": "NCALED",
+      "dataset_slug": "paquets-arome-outre-mer-nouvelle-caledonie-resolution-0-025deg",
+      "resource_prefix": "arome-om-NCALED",
+      "forecast_hours_max": 48,
+      "run_hours_utc": [0, 6, 12, 18],
+      "bounds": {"south": -30, "west": 156, "north": -10, "east": 174},
+      "catalog_file": "config/communes-ncaledonie.json",
+      "admin_grouping": "single_zone",
+      "admin_codes": ["988"]
+    },
+    {
+      "id": "polynesie",
+      "label": "Polynésie française",
+      "meteofrance_code": "POLYN",
+      "dataset_slug": "paquets-arome-outre-mer-polynesie-resolution-0-025deg",
+      "resource_prefix": "arome-om-POLYN",
+      "forecast_hours_max": 48,
+      "run_hours_utc": [0, 6, 12, 18],
+      "bounds": {"south": -25.25, "west": -157.5, "north": -12.6, "east": -144.5},
+      "catalog_file": "config/communes-polynesie.json",
+      "admin_grouping": "single_zone",
+      "admin_codes": ["987"]
+    }
+  ]
+}

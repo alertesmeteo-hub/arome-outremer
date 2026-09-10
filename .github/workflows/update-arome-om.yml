@@ -1,0 +1,157 @@
+name: Mise à jour AROME Outre-Mer
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-arome-outremer
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        domain: [antilles, guyane, reunion, ncaledonie, polynesie]
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
+
+      - name: Installer Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installer les dépendances
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Produire les cartes et les prévisions AROME ${{ matrix.domain }}
+        id: build
+        run: |
+          python scripts/update_arome_om.py \
+            --domain ${{ matrix.domain }} \
+            --domains-config config/domains.json \
+            --output-dir build/${{ matrix.domain }} \
+            --current-metadata-url \
+            "https://raw.githubusercontent.com/${{ github.repository }}/data/${{ matrix.domain }}/index.json"
+          if test -f build/${{ matrix.domain }}/index.json; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Aucune nouvelle publication AROME ${{ matrix.domain }} complète à envoyer."
+          fi
+
+      - name: Vérifier la publication ${{ matrix.domain }}
+        if: steps.build.outputs.publish == 'true'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("build/${{ matrix.domain }}")
+          index = json.loads((root / "index.json").read_text(encoding="utf-8"))
+          maps = json.loads((root / "maps/index.json").read_text(encoding="utf-8"))
+          assert index["status"] == "ok"
+          assert len(maps["layers"]) >= 15
+          assert len(maps["steps"]) >= 40
+          print(f"Validation OK ({'${{ matrix.domain }}'}) : {len(maps['layers'])} cartes, {len(maps['steps'])} échéances")
+          PY
+
+      - name: Archiver le résultat ${{ matrix.domain }}
+        if: steps.build.outputs.publish == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: arome-om-${{ matrix.domain }}
+          path: build/${{ matrix.domain }}
+          retention-days: 1
+
+  publish:
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Télécharger les résultats disponibles
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: arome-om-*
+          merge-multiple: false
+
+      - name: Assembler la branche data
+        id: assemble
+        env:
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          publish_dir="$(mktemp -d)"
+          # Récupère les territoires déjà publiés pour ne jamais en perdre un
+          # lorsque ce passage n'a rafraîchi qu'une partie des 5 domaines.
+          if git ls-remote --exit-code --heads "https://github.com/${GH_REPOSITORY}.git" data >/dev/null 2>&1; then
+            git clone --depth 1 --branch data "https://github.com/${GH_REPOSITORY}.git" "$publish_dir/_previous" || true
+            if [ -d "$publish_dir/_previous" ]; then
+              find "$publish_dir/_previous" -maxdepth 1 -mindepth 1 ! -name '.git' -exec cp -a {} "$publish_dir/" \;
+              rm -rf "$publish_dir/_previous"
+            fi
+          fi
+          found=false
+          for dir in artifacts/arome-om-*; do
+            test -d "$dir" || continue
+            domain="$(basename "$dir" | sed 's/^arome-om-//')"
+            mkdir -p "$publish_dir/$domain"
+            cp -a "$dir/." "$publish_dir/$domain/"
+            found=true
+          done
+          if [ "$found" != "true" ] && ! find "$publish_dir" -mindepth 2 -maxdepth 2 -name index.json | grep -q .; then
+            echo "Aucun domaine Outre-Mer disponible (ni nouveau ni déjà publié)."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python - "$publish_dir" <<'PY'
+          import json, sys
+          from pathlib import Path
+          from datetime import datetime, timezone
+          root = Path(sys.argv[1])
+          territories = {}
+          for dom_dir in sorted(root.iterdir()):
+              index_path = dom_dir / "index.json"
+              if not index_path.is_file():
+                  continue
+              index = json.loads(index_path.read_text(encoding="utf-8"))
+              territories[dom_dir.name] = {
+                  "status": index.get("status"),
+                  "run_time": index.get("model", {}).get("run_time"),
+                  "generated_at": index.get("generated_at"),
+                  "file": f"{dom_dir.name}/index.json",
+              }
+          (root / "index.json").write_text(json.dumps({
+              "schema_version": 1,
+              "status": "ok",
+              "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+              "territories": territories,
+          }, ensure_ascii=False, indent=2), encoding="utf-8")
+          PY
+          touch "$publish_dir/.nojekyll"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+          echo "publish_dir=$publish_dir" >> "$GITHUB_OUTPUT"
+
+      - name: Publier la branche data
+        if: steps.assemble.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          cd "${{ steps.assemble.outputs.publish_dir }}"
+          git init -b data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit -m "Données AROME Outre-Mer $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GH_REPOSITORY}.git"
+          git push --force origin data
