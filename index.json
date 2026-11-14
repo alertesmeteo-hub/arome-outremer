@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "generated_at": "2026-11-14T14:32:14.709570Z",
+  "territories": {
+    "antilles": {
+      "status": "ok",
+      "run_time": "2026-11-14T06:00:00Z",
+      "generated_at": "2026-11-14T14:28:45.296015Z",
+      "file": "antilles/index.json"
+    },
+    "guyane": {
+      "status": "ok",
+      "run_time": "2026-11-14T06:00:00Z",
+      "generated_at": "2026-11-14T14:29:13.662901Z",
+      "file": "guyane/index.json"
+    },
+    "ncaledonie": {
+      "status": "ok",
+      "run_time": "2026-11-14T06:00:00Z",
+      "generated_at": "2026-11-14T14:30:22.021837Z",
+      "file": "ncaledonie/index.json"
+    },
+    "polynesie": {
+      "status": "ok",
+      "run_time": "2026-11-14T06:00:00Z",
+      "generated_at": "2026-11-14T14:31:33.620338Z",
+      "file": "polynesie/index.json"
+    },
+    "reunion": {
+      "status": "ok",
+      "run_time": "2026-11-14T06:00:00Z",
+      "generated_at": "2026-11-14T14:29:14.255624Z",
+      "file": "reunion/index.json"
+    }
+  }
+}
